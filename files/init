@@ -1,0 +1,12 @@
+# Run init scripts and CMD
+echo "# Running init scripts..."
+# All files with an extension will be executed.
+for FILE in $CONTAINER_DIR/init.d/*.*; do
+	echo "# ... $FILE"
+	chmod +x "$FILE"
+	"$FILE"
+done
+
+# Run CMD
+echo "# Starting CMD..."
+exec "$@"
