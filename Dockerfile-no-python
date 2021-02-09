@@ -3,20 +3,22 @@ FROM alpine:3.13
 
 LABEL maintainer "Adrian Sausenthaler <docker.sausix.removethispart@sausenthaler.de>"
 
-ENV BIND_VERSION 9.16.11
 ENV CONTAINER_DIR "/container"
+ENV BIND_VERSION 9.16.11
+ENV BIND_SRC_MD5 58cbc23121e43ec934d644c4f412ceea
 
 RUN apk update && \
-	apk add --no-cache tzdata tini && \
+	apk add --no-cache tzdata tini dnssec-root bind-libs libcap libidn2 mariadb-connector-c && \
 	apk add --no-cache --virtual .build-deps \
-	make gcc file musl-dev libuv-dev openssl-dev libxml2-dev json-c-dev krb5-dev protobuf-c-dev libcap-dev fstrm-dev libidn2-dev mariadb-dev mariadb-client && \
+	make gcc file musl-dev libuv-dev openssl-dev libxml2-dev json-c-dev krb5-dev protobuf-c-dev libcap-dev fstrm-dev libidn2-dev mariadb-dev && \
 	export BUILDDIR="$CONTAINER_DIR/build" && \
-	export LOGDIR="$CONTAINER_DIR/log" && \
+	export LOGDIR="$CONTAINER_DIR/buildlog" && \
 	mkdir -p "$BUILDDIR" && \
 	mkdir -p "$LOGDIR" && \
 	mkdir -p "$CONTAINER_DIR/init.d" && \
 	cd "$BUILDDIR" && \
 	wget https://downloads.isc.org/isc/bind9/${BIND_VERSION}/bind-${BIND_VERSION}.tar.xz && \
+	echo "${BIND_SRC_MD5}  bind-${BIND_VERSION}.tar.xz" | md5sum -cs - && \
 	tar -xf bind-${BIND_VERSION}.tar.xz && \
 	cd bind-${BIND_VERSION} && \
 	export CFLAGS="-D_GNU_SOURCE" && \
@@ -51,16 +53,17 @@ RUN apk update && \
 	make install > $LOGDIR/make_install.log 2> $LOGDIR/make_install.err && \
 	apk del -r .build-deps && \
 	cd / && \
-	rm -rf "$BUILDDIR" "/var/cache/apk/*" && \
+	rm -rf "$BUILDDIR" "/var/cache/apk/*" "/etc/bind/bind.keys" && \
 	addgroup -S named && \
 	adduser -S -D -H -h /etc/bind -s /sbin/nologin -G named -g named named && \
-	chown -R root:named /etc/bind
+	chown -R root:named /etc/bind && \
+	mkdir -p -m 770 /var/named && \
+	chown root:named /var/named
 
 COPY "files/init" "$CONTAINER_DIR/"
 COPY "files/00-printvars.sh" "$CONTAINER_DIR/init.d/"
+COPY "files/*.zone" "/var/named/"
 
 ENTRYPOINT ["/sbin/tini", "--", "/bin/sh", "-e", "/container/init"]
 
 CMD ["/bin/sh"]
-
-# /etc/bind/bind.keys
