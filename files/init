@@ -1,12 +1,23 @@
 # Run init scripts and CMD
-echo "# Running init scripts..."
+
+TMP_EXEC_FILE="/tmp/_init.d_exec_file"
+
+echo "=== Running init scripts ==="
 # All files with an extension will be executed.
 for FILE in $CONTAINER_DIR/init.d/*.*; do
-	echo "# ... $FILE"
-	chmod +x "$FILE"
-	"$FILE"
+	if [ -f "$FILE" ]; then
+		echo "------ [ $FILE ]"
+
+		# Directory may or should be read only because mounted in.
+		cp "$FILE" "$TMP_EXEC_FILE"
+		chmod +x "$TMP_EXEC_FILE"
+		
+		# Execute the copy instead
+		"$TMP_EXEC_FILE"
+	fi
 done
+rm -rf "$TMP_EXEC_FILE"
 
 # Run CMD
-echo "# Starting CMD..."
+echo "=== Starting CMD ==="
 exec "$@"

@@ -8,7 +8,7 @@ ENV BIND_VERSION 9.16.11
 ENV BIND_SRC_MD5 58cbc23121e43ec934d644c4f412ceea
 
 RUN apk update && \
-	apk add --no-cache python3 py3-ply py3-bind py3-jinja2 tzdata tini dnssec-root bind-libs libcap libidn2 mariadb-connector-c && \
+	apk add --no-cache tzdata tini dnssec-root dns-root-hints bind-libs libcap libidn2 mariadb-connector-c python3 py3-ply py3-bind py3-jinja2 && \
 	apk add --no-cache --virtual .build-deps \
 	make gcc file musl-dev libuv-dev openssl-dev libxml2-dev json-c-dev krb5-dev protobuf-c-dev libcap-dev fstrm-dev libidn2-dev mariadb-dev python3-dev && \
 	export BUILDDIR="$CONTAINER_DIR/build" && \
@@ -55,13 +55,18 @@ RUN apk update && \
 	rm -rf "$BUILDDIR" "/var/cache/apk/*" "/etc/bind/bind.keys" && \
 	addgroup -S named && \
 	adduser -S -D -H -h /etc/bind -s /sbin/nologin -G named -g named named && \
-	chown -R root:named /etc/bind && \
 	mkdir -p -m 770 /var/named && \
-	chown root:named /var/named
+	mkdir -p -m 755 /run/named && \
+	chown named:named /run/named && \
+	mkdir -p ${CONTAINER_DIR}/bind-config && \
+	mkdir -p ${CONTAINER_DIR}/default-zones && \
+	mkdir -p -m 750 /var/log/bind
 
 COPY "files/init" "$CONTAINER_DIR/"
-COPY "files/00-printvars.sh" "$CONTAINER_DIR/init.d/"
-COPY "files/*.zone" "/var/named/"
+COPY "files/*.zone" "$CONTAINER_DIR/default-zones/"
+
+VOLUME ["/container/bind-config"]
+VOLUME ["/var/named"]
 
 ENTRYPOINT ["/sbin/tini", "--", "/bin/sh", "-e", "/container/init"]
 
