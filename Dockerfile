@@ -65,8 +65,7 @@ RUN apk update && \
 COPY "files/init" "$CONTAINER_DIR/"
 COPY "files/*.zone" "$CONTAINER_DIR/default-zones/"
 
-VOLUME ["/container/bind-config"]
-VOLUME ["/var/named"]
+VOLUME ["/var/named", "/etc/bind"]
 
 ENTRYPOINT ["/sbin/tini", "--", "/bin/sh", "-e", "/container/init"]
 
