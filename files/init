@@ -1,3 +1,4 @@
+#!/bin/sh +e
 # Run init scripts and CMD
 
 TMP_EXEC_FILE="/tmp/_init.d_exec_file"
@@ -8,15 +9,24 @@ for FILE in $CONTAINER_DIR/init.d/*.*; do
 	if [ -f "$FILE" ]; then
 		echo "------ [ $FILE ]"
 
-		# Directory may or should be read only because mounted in.
+		# Directory may or should be read only because it's mounted from host.
 		cp "$FILE" "$TMP_EXEC_FILE"
 		chmod +x "$TMP_EXEC_FILE"
 		
-		# Execute the copy instead
+		# Execute a temporary copy instead
 		"$TMP_EXEC_FILE"
+		CODE="$?"
+		
+		if [ "$CODE" -ne "0" ]; then
+			echo "##### Init script \"$FILE\" failed with exit code: $CODE #####" >&2
+			exit 1
+		fi
+		
+		# Clean up file
+		rm -rf "$TMP_EXEC_FILE"
 	fi
 done
-rm -rf "$TMP_EXEC_FILE"
+echo "=== Done with all init scripts ==="
 
 # Run CMD
 echo "=== Starting CMD ==="
